@@ -12,6 +12,9 @@ module RDig
       # takes the ferret section of the rdig configuration as a parameter.
       def initialize(settings)
         @ferret_config = settings
+        puts settings.marshal_dump
+        puts settings.class
+        settings.limit = :all
         @query_parser = Ferret::QueryParser.new(settings.marshal_dump)
         ferret_searcher
       end
@@ -40,6 +43,8 @@ module RDig
       # offset:: first document in result list to retrieve (0-based). The default is 0.
       # limit:: number of documents to retrieve. The default is 10.
       # Please see the Ferret::Search::Searcher API for more options.
+
+
       def search(query, options={})
         result = {}
         query = query_parser.parse(query) if query.is_a?(String)

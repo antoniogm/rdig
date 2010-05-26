@@ -1,54 +1,59 @@
 module RDig
-  
+
   module UrlFilters
 
     class FilterChain
-      def initialize(chain_config)
+      def initialize(chain_config, crawl_config)
+        @crawl_config = crawl_config
         @filters = []
         chain_config.each { |filter|
+
           case filter
-          when Hash
-            filter.each_pair { |f, args|
-              add(f, args)
-            }
-          when Array
-            args = filter
-            filter = args.shift
-            add(filter, args)
-          else
-            add(filter)
+            when Hash
+              filter.each_pair { |f, args|
+                add(f, @filters, args)
+              }
+            when Array
+              args = filter
+              filter = args.shift
+              add(filter, @filters,args)
+
+            else
+
+              add(filter, @filters)
+
           end
         }
       end
 
       # add a filter and it's args to the chain
       # if args is a symbol, it is treated as a configuration key
-      def add(filter, args=nil)
-        args = RDig.config.crawler.send(args) if args.is_a? Symbol
+      def add(filter, filters = @filters, args=nil)
+        args = @crawl_config.send(args) if args.is_a? Symbol
         case filter
-        when Symbol
-          if args.nil?
-            @filters << lambda { |document|
-              UrlFilters.send(filter, document)
-            }
-          else
-            @filters << lambda { |document|
-              UrlFilters.send(filter, document, args)
-            }
-          end
-        when Class
-          if args.nil?
-            if filter.respond_to?(:instance)
-              filter_instance = filter.instance
+          when Symbol
+            if args.nil?
+              @filters << lambda { |document|
+                UrlFilters.send(filter, document)
+              }
             else
-              filter_instance = filter.new
+              @filters << lambda { |document|
+                UrlFilters.send(filter, document, args)
+              }
             end
-          else
-            filter_instance = filter.new(args)
-          end
-          @filters << lambda { |document|
-            filter_instance.apply(document)
-          }
+          when Class
+            if args.nil?
+              if filter.respond_to?(:instance)
+                filter_instance = filter.instance
+              else
+                filter_instance = filter.new
+              end
+            else
+              filter_instance = filter.new(args)
+            end
+            @filters << lambda { |document|
+              filter_instance.apply(document)
+            }
         end
       end
 
@@ -66,6 +71,7 @@ module RDig
     # between all crawler threads
     class VisitedUrlFilter
       include MonitorMixin, Singleton
+
       def initialize
         @visited_urls = Set.new
         super
@@ -75,7 +81,7 @@ module RDig
       # nil otherwise
       def apply(document)
         synchronize do
-          @visited_urls.add?(document.uri.to_s) ? document : nil 
+          @visited_urls.add?(document.uri.to_s) ? document : nil
         end
       end
     end
@@ -84,6 +90,7 @@ module RDig
       def initialize(max_depth = nil)
         @max_depth = max_depth
       end
+
       def apply(document)
         return document if @max_depth.nil? || document.depth <= @max_depth
       end
@@ -97,8 +104,8 @@ module RDig
         unless args.nil?
           @patterns = []
           if args.respond_to? :each
-            args.each { |pattern| 
-              # cloning because unsure if regexps are thread safe ?
+            args.each { |pattern|
+            # cloning because unsure if regexps are thread safe ?
               @patterns << pattern #.clone
             }
           else
@@ -130,7 +137,28 @@ module RDig
         return nil
       end
     end
-
+    class IndexUrlInclusionFilter < PatternFilter
+      # returns nil if any of the patterns matches it's URI,
+      # the document itself otherwise
+      def apply(document)
+        return document unless @patterns
+        @patterns.each { |p|
+          return document if document.uri.to_s =~ p
+        }
+        return nil
+      end
+    end
+    class IndexUrlExclusionFilter < PatternFilter
+      # returns the document if any of the patterns matches it's URI,
+      # nil otherwise
+      def apply(document)
+        return document unless @patterns
+        @patterns.each { |p|
+          return nil if document.uri.to_s =~ p
+        }
+        return document
+      end
+    end
     # returns nil if any of the patterns matches it's path,
     # the document itself otherwise. Applied to real files only.
     class PathExclusionFilter < PatternFilter
@@ -174,14 +202,14 @@ module RDig
       uri.host = ref.host unless uri.host
       uri.port = ref.port unless uri.port || ref.port==ref.default_port
       uri.path = ref.path unless uri.path
-      
+
       old_uri_path = uri.path
       if uri.path !~ /^\// || uri.path =~ /^\.\./
         ref_path = ref.path || '/'
         ref_path << '/' if ref_path.empty?
         uri.path = ref_path[0..ref_path.rindex('/')] + uri.path
       end
-      uri.path = uri.path.sub( /\/[^\/]*\/\.\./, "" ) if old_uri_path =~ /^\.\./
+      uri.path = uri.path.sub(/\/[^\/]*\/\.\./, "") if old_uri_path =~ /^\.\./
       return document
     rescue
       p document
@@ -204,7 +232,7 @@ module RDig
         if cfg.index_document
           document.uri.path << RDig.config.index_document
         elsif cfg.remove_trailing_slash
-         document.uri.path.gsub! /\/$/, ''
+          document.uri.path.gsub! /\/$/, ''
         end
       end
       return document
@@ -214,6 +242,7 @@ module RDig
       return document if (document.uri.scheme.nil? || document.uri.scheme =~ /^file$/i)
       nil
     end
+
     def UrlFilters.scheme_filter_http(document)
       return document if (document.uri.scheme.nil? || document.uri.scheme =~ /^https?$/i)
       nil

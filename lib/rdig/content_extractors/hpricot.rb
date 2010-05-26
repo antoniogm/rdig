@@ -6,17 +6,19 @@ rescue LoadError
   require 'hpricot'
   require 'htmlentities'
 end
-  
+
 module RDig
   module ContentExtractors
 
     # extracts title, content and links from html documents using the hpricot library
+
+
     class HpricotContentExtractor < ContentExtractor
 
       def initialize(config)
         super(config.hpricot)
         # if not configured, refuse to handle any content:
-        @pattern = /^(text\/(html|xml)|application\/(xhtml\+xml|xml))/ if config.hpricot 
+        @pattern = /^(text\/(html|xml)|application\/(xhtml\+xml|xml))/ if config.hpricot
       end
 
       # returns: 
@@ -26,10 +28,11 @@ module RDig
       def process(content)
         entities = HTMLEntities.new
         doc = Hpricot(content)
-        { 
-          :title => entities.decode(extract_title(doc)).strip,
-          :links => extract_links(doc),
-          :content => entities.decode(extract_content(doc))
+        {
+                :title => entities.decode(extract_title(doc)).strip,
+                :links => extract_links(doc),
+                :content => entities.decode(extract_content(doc)), 
+                :html =>doc.html
         }
       end
 
@@ -45,7 +48,7 @@ module RDig
         if ce = content_element(doc)
           return strip_tags(strip_comments(ce.inner_html))
         end
-          # return (ce.inner_text || '').gsub(Regexp.new('\s+', Regexp::MULTILINE, 'u'), ' ').strip
+        # return (ce.inner_text || '').gsub(Regexp.new('\s+', Regexp::MULTILINE, 'u'), ' ').strip
         return ''
       end
 
@@ -59,7 +62,7 @@ module RDig
           end
         end.flatten.compact
       end
-      
+
       # Extracts the title from the given html tree
       def extract_title(doc)
         the_title_tag = title_tag(doc)
@@ -89,17 +92,34 @@ module RDig
       def strip_comments(string)
         string.gsub Regexp.new('<!--.*?-->', Regexp::MULTILINE, 'u'), ''
       end
-      
+
       def strip_tags(string)
-        string.gsub! Regexp.new('<(script|style).*?>.*?<\/(script|style).*?>', 
-                               Regexp::MULTILINE, 'u'), ''
+        string.gsub! Regexp.new('<(script|style).*?>.*?<\/(script|style).*?>',
+                                Regexp::MULTILINE, 'u'), ''
         string.gsub! Regexp.new('<.+?>',
-                               Regexp::MULTILINE, 'u'), ''
+                                Regexp::MULTILINE, 'u'), ''
         string.gsub! Regexp.new('\s+', Regexp::MULTILINE, 'u'), ' '
         string.strip
       end
 
     end
+=begin
+    class AllHTMLContentExtractor < HpricotContentExtractor
 
+      def initialize(config)
+        super(config)
+      end
+
+      def process(content)
+        entities = HTMLEntities.new
+        doc = Hpricot(content)
+        {
+                :title => entities.decode(extract_title(doc)).strip,
+                :links => extract_links(doc),
+                :content => doc.html
+        }
+      end
+    end
+=end
   end
 end

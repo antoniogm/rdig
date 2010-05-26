@@ -25,7 +25,7 @@ module RDig
           RDig.logger.info "initializing content extractor: #{ex_class}"
           ex = nil
           begin
-            ex = ex_class.new(RDig.configuration.content_extraction)
+            ex = ex_class.new(RDig::ShagBot.configuration.content_extraction)
           rescue Exception
             RDig.logger.error "error: #{$!.message}\n#{$!.backtrace.join("\n")}"
           end
