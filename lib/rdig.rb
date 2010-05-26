@@ -455,7 +455,7 @@ end
 #w = Website.new
 #w.crawler_config_file = "/Users/antoniogarcia-martinez/src/rdig/doc/examples/config.rb"
 #w.domain = "http://www.acmeclimbing.com"
-#rdig = RDig::ShagBot.new(w)
+rdig = RDig::ShagBot.new(w)
 #rdig.logger.sev_threshold = Logger::DEBUG
 
 #rdig.crawl
