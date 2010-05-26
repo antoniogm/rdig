@@ -1,4 +1,11 @@
-*.tmproj
-*.swp
-tmp
-pkg
+.idea
+**/.idea
+**/.DS_Store
+**/.idea
+**/*.sqlite3*
+log/*.log
+db/*.sqlite3
+vendor/plugins/keyword_generator/test/*.sqlite3.db
+tmp/**/*
+**/*~
+pkg/**
