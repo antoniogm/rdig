@@ -4,8 +4,8 @@ RDig::ShagBot.configuration do |cfg|
   ##################################################################
   # options you really should set
 
-  # log file location
-  cfg.log_file = STDOUT
+  # log file location'
+  cfg.log_file = '/tmp/shagbot.log'
 
   # log level, set to :debug, :info, :warn or :error
   cfg.log_level = :debug

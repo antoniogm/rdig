@@ -81,11 +81,6 @@ module RDig
       @logger = log
     end
 
-    def create_logger
-      l = Logger.new(STDOUT)
-      l.level = Logger.const_get RDig.config.log_level.to_s.upcase rescue Logger::WARN
-      return l
-    end
 
     # Filter chains are used by the crawler to limit the set of documents being indexed.
     # There are two chains - one for http, and one for file system crawling.
@@ -132,7 +127,18 @@ module RDig
   end
   class ShagBot
     def initialize(website)
-      load_configfile(website.crawler_config_file)
+      begin
+        load_configfile(website.crawler_config_file)
+        if website.domain.nil? or website.product_url_regex.nil?
+          raise "Website #{ website.id} has no domain or product url specified"
+        end
+        @config.crawler.start_urls=[website.domain]
+        hostname = website.domain.split("//")[ 1 ]
+        @config.crawler.include_hosts = [ hostname]
+        @config.crawler.index_include_documents = [ Regexp.new( website.product_url_regex)]
+      rescue
+        raise
+      end
     end
 
     def load_configfile(file)
@@ -222,7 +228,7 @@ module RDig
     end
 
     def create_logger
-      l = Logger.new(STDOUT)
+      l = Logger.new(@config.log_file)
       l.level = Logger.const_get RDig.config.log_level.to_s.upcase rescue Logger::WARN
       RDig.logger = l
       return l
@@ -447,15 +453,16 @@ end
 #require 'rdig/file'
 #require 'rdig/documents'
 #require 'rdig/crawler'
-
+#require 'em_models'
 
 #RDig.logger.sev_threshold = Logger::DEBUG
 #puts RDig.logger.sev_threshold
 #RDig.application.run
 #w = Website.new
-#w.crawler_config_file = "/Users/antoniogarcia-martinez/src/rdig/doc/examples/config.rb"
+##w.crawler_config_file = "/Users/antoniogarcia-martinez/src/shag_bot/lib/rdig/config.rb"
 #w.domain = "http://www.acmeclimbing.com"
-rdig = RDig::ShagBot.new(w)
+#w.product_url_regex = "ProdID="
+#s = RDig::ShagBot.new(w)
 #rdig.logger.sev_threshold = Logger::DEBUG
 
-#rdig.crawl
+#s.crawl
